@@ -1,0 +1,280 @@
+---
+title: "MASTER"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+Start of markdown:
+
+PART ONE: EXPLORATORY DATA AND TEXT ANALYSIS
+
+The data was downloaded from open.seattle.gov and uploaded to my FINAL-PROJECT GitHub repo.
+
+1. Loading the data
+```{r}
+dataLink='https://raw.githubusercontent.com/katrinae-uw/FINAL-PROJECT/master/Your_Voice_Your_Choice_Master_List_of_All_Projects_With_Scores.csv'
+
+data=read.csv(dataLink,stringsAsFactors = F)
+```
+
+2. Verifying that it is a data frame:
+```{r}
+is.data.frame(data)
+```
+
+3. Looking at the types for the vectors:
+```{r}
+str(data)
+```
+
+4. The variable "Average Score" is reading as a character, so I need to change the data type. There must be some non-number values for some observations. I will create a new variable called "Average.Numeric" and set it as numeric.
+```{r}
+data$Average.Numeric=as.numeric(as.character(data$Average.Score))
+```
+
+5. This gives the message "NAs introduced by coercion". I will create a subset of the data called "data.sub" that will exclude the NA values from "Average.Numeric".
+```{r}
+data.sub=data[is.na(data$Average.Numeric) == FALSE,]
+```
+
+6. I see that this take the number of observations down to 640 from 874. I will now work with the data.sub data frame.
+
+Confirming the "Average.Numeric" is reading as a numeric vector:
+```{r}
+is.numeric(data.sub$Average.Numeric)
+```
+
+7. Average.Numeric is reading as a numeric vector, so I will continue with my exploratory data analysis of this variable of interest.
+
+Summary statistics for the variable Average.Numeric:
+```{r}
+summary(data.sub$Average.Numeric)
+```
+
+8. I am curious if the average "Average.Numeric" score for projects that were "On Ballot, Not Funded" and projects that were "Funded for 2018 Implementation" differ. I believe this may something about whether or not voters voted for projects with higher average scores.
+
+Looking at the mean values for "Average.Numeric" by "Project.Status".
+```{r}
+aggregate(data.sub$Average.Numeric,list(data.sub$Project.Status),mean)
+```
+
+9. The means don't look very different at 15.46 and 15.8. I'll look at their distributions by creating box plots. First load the required packages. Then create box plots looking at the "Average.Numeric" distribution by "Project.Status":
+```{r}
+library("ggpubr")
+library("ggplot2")
+ggboxplot(data.sub, x = "Project.Status", y = "Average.Numeric", 
+          color = "Project.Status", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#00AFBB", "#E7B800", "#FC4E07"),
+          order = c("Funded for 2018 Implementation", "On Ballot, Not Funded", "Did Not Advance", "Not Feasible", "Already Funded", "Referred to Maintenance"),
+          title = 'Distribution of Average Scores by Project Status',
+          ylab = "Average.Numeric", xlab = "Project.Status") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+10. The box plot reveals some interesting things. Namely, there was a project that scored low enough to be an outlier, but was still funded for implementation. It would be interesting to know what about that project appealed to voters.
+
+Since voting happens by Council District, it may also be interesting to look at the data by Council District.
+
+First, looking at the data type for the vector "Council.District.".
+```{r}
+str(data.sub$Council.District.)
+```
+
+11. The vector is reading as an integer because the Council Districts are named 1, 2, 3, etc. However, the vector should read as a character, so I will create a new variable called "Council.District.TRUE" and verify the data type as a character:
+```{r}
+data.sub$Council.District.TRUE=as.character(data.sub$Council.District.)
+is.character(data.sub$Council.District.TRUE)
+```
+
+12. Confirmed that the variable "Council.District.TRUE" is reading as a character vector.
+
+Looking at the means of Average.Numeric by Council.District.TRUE:
+```{r}
+aggregate(data.sub$Average.Numeric,list(data.sub$Council.District.TRUE),mean)
+```
+
+13. I wonder if the difference between the means by Council District is significant. I can conduct a one-way ANOVA test to see if any of the differences between the means are significant.
+```{r}
+res.aov <- aov(Average.Numeric ~ Council.District.TRUE, data = data.sub)
+summary(res.aov)
+```
+
+14. Yes, there are significant differences between some of the pairs of means. The p-value, Pr(>F), is less than 0.05, so the groups with a "*" have signficant differences.  
+
+Next, I will visualize the distributions with box plots:
+```{r}
+ggboxplot(data.sub, x = "Council.District.TRUE", y = "Average.Numeric", 
+          color = "Council.District.TRUE", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#00AFBB", "#E7B800", "#FC4E07", "#00AFBB"),
+          order = c("1", "2", "3", "4", "5", "6", "7"),
+          title = 'Distribution of Average Scores by Council District',
+          ylab = "Average.Numeric", xlab = "Council.District.TRUE")
+```
+
+15. Looking at the data for "Project.Type" might also be interesting to see if there is any correlation between Council District and "Project.Type". "Project.Type" appears to have been filled in by the data owner rather than the person proposing the project, or the proposer selected from a set categories when submitting their proposal.
+
+First, I will look at the contigency table:
+```{r}
+table(data.sub$Project.Type,data.sub$Council.District.TRUE)
+```
+
+16. Just eye-balling the table, Crossing Improvements appears to be the most common for all the Council Districts.
+
+Installing library to work with categorical-categorical data exploration and looking at another contigency table with row totals:
+```{r}
+library(gmodels)
+CrossTable(data.sub$Project.Type,data.sub$Council.District.TRUE,prop.t=F, prop.r=F, prop.c=F,prop.chisq=F)
+```
+
+17. I want to know if Project Type is associated with Council District, so I will use a chi-squared test.
+```{r}
+CrossTable(data.sub$Project.Type,data.sub$Council.District.TRUE,prop.t=F, prop.r=F, prop.c=F,prop.chisq=F,chisq=T)
+```
+
+18. p =  0.01166714 so the null hypothesis is not rejected and it appears that Project Type is not associated with Council District. However, that "Chi-squared approximation may be incorrect" is noted in the output.
+
+I am also interested in the most common words used by in the project proposals to answer the question "Who Benefits?" for each project proposal. So, I will install the term frequency library and remove capitalization, numbers, common words, and punctuation.
+```{r}
+library(tm)
+corpus <- Corpus(VectorSource(data.sub$Who.Benefits.)) # create corpus object
+corpus <- tm_map(corpus, tolower) # convert all text to lower case
+corpus <- tm_map(corpus, removePunctuation)
+corpus <- tm_map(corpus, removeNumbers)
+corpus <- tm_map(corpus, removeWords, stopwords('english'))
+```
+
+19. The following creates a term document matrix to see how often each of the most common words appears in each project.
+```{r}
+tdm <- TermDocumentMatrix(corpus)
+count<- as.data.frame(inspect(tdm))
+count$word = rownames(count)
+colnames(count) <- c('count','word')
+count<-count[order(count$count, decreasing=TRUE), ]
+```
+
+20. This is isn't quite what I want. I want to know the total number of project proposals that use the most frequent words for "Who Benefits".
+```{r}
+dtm <- TermDocumentMatrix(corpus)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+head(d, 10)
+```
+
+21. Now I am seeing the 10 most common words in the "Who Benefits" column. Though it could be that one project proposal uses the word pedestrians 227 times. I want to know something more like, what words appear in the field "Who Benefits" for the most counts of project proposals. NOT SURE HOW TO DO THAT.
+
+I wonder if there is any association between score and words used to describe who benefits? This is a question for future analysis.
+
+PART TWO: MAPPING
+
+22. I downloaded a shapefile from: https://data.seattle.gov/dataset/Council-Districts/wud8-na47. This dataset contains map information for Seattle's Council Districts. I uploaded the zip file to GitHub.
+
+Unzipping and reading the zip file with required packages installed first:
+```{r}
+compressedMap="https://github.com/katrinae-uw/FINAL-PROJECT/raw/master/Council_Districts.zip"
+
+library(utils)
+temp=tempfile()
+download.file(compressedMap, temp)
+unzip(temp)
+```
+
+23. Looking to see what shapefiles there are:
+```{r}
+(maps=list.files(pattern = 'shp'))
+```
+
+24. I see the name of the shapefile. I will name my map "CDMap" for "Council District Map". With needed packages loaded, selecting the maps that I need for "CDMap":
+```{r}
+library(rgdal)
+CDMap <- rgdal::readOGR('Council_Districts.shp',stringsAsFactors=F)
+```
+
+25. Looking at what I have in the map:
+```{r}
+names(CDMap)
+```
+
+26. Checking data type of "C_District":
+```{r}
+str(CDMap$C_DISTRICT)
+```
+
+27. In the map file, Council District is read as a character. This matches "Council.District.TRUE" that I created in the data.sub data frame. Good!
+
+Now, I need to create a new data frame that aggregates the count of project proposals by Council_District_TRUE. 
+
+Creating a new column that is full of number 1 (this will be the numeric column when creating the new data frame for the map) and testing that it is numeric:
+```{r}
+data.sub["count"] <- 1
+
+is.numeric(data.sub$count)
+```
+
+28. I now have a column with "1" for each row so I can aggregate by Council_District_TRUE. I will name the new data frame "data_by_CD".
+```{r}
+numericColumns=c("count")
+aggregateBY='Council.District.TRUE'
+
+data_by_CD=aggregate(data.sub[,numericColumns], by=list(data.sub[,aggregateBY]),sum)
+names(data_by_CD)=c('Council.District.TRUE', 'count')
+data_by_CD
+```
+
+29. Now I will merge the map file with data_by_CD and name the new map "CD_projects_map".
+```{r}
+CD_projects_map=merge(CDMap,data_by_CD, by.x='C_DISTRICT', by.y='Council.District.TRUE',all.x=F)
+```
+
+30. Trying mapping both:
+```{r}
+plot(CDMap,col='black')
+plot(CD_projects_map,col='pink',border='grey',add=T)
+```
+
+31. I get a map, so it is working. Now I want to map the variable "count".
+
+Install and load the necessary packages to manage color and divisions:
+```{r}
+library(RColorBrewer)
+library(classInt)
+```
+
+32. Define the input:
+```{r}
+varToPLot=CD_projects_map$count
+```
+
+33. Get colors and intervals:
+```{r}
+numberOfClasses = 5
+colorForScale='YlGnBu'
+colors = brewer.pal(numberOfClasses, colorForScale)
+intervals <- classIntervals(varToPLot, numberOfClasses, 
+                            style = "quantile",
+                            dataPrecision=2)
+colorPallette <- findColours(intervals, colors)
+```
+
+34. Map:
+```{r}
+legendText="project proposal rate"
+shrinkLegend=0.4
+title="Project Proposal Rate by Council District"
+
+plot(CDMap,col='red',main=title)
+plot(CD_projects_map, col = colorPallette,border='grey',add=T)
+
+legend('topright', legend = names(attr(colorPallette, "table")), 
+       fill = attr(colorPallette, "palette"), cex = shrinkLegend, 
+       bty = "n",
+       title=legendText)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
