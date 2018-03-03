@@ -30,7 +30,7 @@ is.data.frame(data)
 str(data)
 ```
 
-4. The variable "Average Score" is reading as a character, so I need to change the data type. There must be some non-number values for some observations. I will create a new variable called "Average.Numeric" and set it as numeric.
+4. I want to explore the variable "Average Score". The variable "Average Score" is reading as a character, so I need to change the data type. There must be some non-number values for some observations. I will create a new variable called "Average.Numeric" and set it as numeric.
 ```{r}
 data$Average.Numeric=as.numeric(as.character(data$Average.Score))
 ```
@@ -165,9 +165,116 @@ head(d, 10)
 
 I wonder if there is any association between score and words used to describe who benefits? This is a question for future analysis.
 
-PART TWO: MAPPING
+PART TWO: CLUSTERING
 
-22. I downloaded a shapefile from: https://data.seattle.gov/dataset/Council-Districts/wud8-na47. This dataset contains map information for Seattle's Council Districts. I uploaded the zip file to GitHub.
+22. For clustering, I want to cluster by "Project..", so I need to first create a new variable with a substring of the character string and then set that variable as a numeric value.
+```{r}
+substr(data.sub$Project..,4,6)
+data.sub$ProjectID=substr(data.sub$Project..,4,6)
+data.sub$ProjectID=as.numeric(data.sub$ProjectID)
+str(data.sub$ProjectID)
+```
+
+23. I know from looking through the data frame, that the ProjectID = 400 repeats, so I will create a new data frame called data.sub2 withouth these two rows:
+```{r}
+data.sub2=data.sub[data.sub$ProjectID != 400,]
+```
+
+24. I see that the number of observations went from 640 to 638, so now I will test that the unit to be cluster appears just once in a column.
+```{r}
+length(data.sub2$ProjectID)==length(unique(data.sub2$ProjectID))
+```
+
+25. Use the column with the names of unit of analysis as the row names.
+```{r}
+row.names(data.sub2)=data.sub2$ProjectID
+```
+
+26. Looking at the data type for columns that I will use for clustering (input columns).
+```{r}
+str(data.sub2[,c("Average.Numeric","Project.Type","Dept.")])
+```
+
+27. Two of the variables are character strings. I need to convert these to factors. This will give us a factor variable for Project.Type with 14 levels, and a factor variable Dept. with 5 levels:
+```{r}
+factor(data.sub2$Project.Type)
+factor(data.sub2$Dept.)
+```
+
+28. Saving them as factors and then looking at the data types again:
+```{r}
+data.sub2$Project.Type=as.factor(data.sub2$Project.Type)
+data.sub2$Dept.=as.factor(data.sub2$Dept.)
+str(data.sub2[,c("Average.Numeric","Project.Type","Dept.")])
+```
+
+29. I have a mix of data types, so I produce a similarity matrix with "gower".
+```{r}
+library(cluster)
+dataSimi=daisy(data.sub2[,c("Average.Numeric","Project.Type","Dept.")],metric = "gower",
+               stand=TRUE)
+```
+
+30. Applying the clustering technique:
+```{r}
+dataClus=hclust(dataSimi,method = 'average')
+```
+
+31. Comparing visually:
+```{r}
+plot(dataClus,cex=0.5)
+```
+
+32. Trying with a different numbers of clusters highlighted with color borders:
+```{r}
+plot(dataClus,cex=0.5)
+rect.hclust(dataClus, k = 3,border = c('orange','blue','red','green'))
+```
+
+```{r}
+plot(dataClus,cex=0.5)
+rect.hclust(dataClus, k = 10,border = c('orange','blue','red','green'))
+```
+
+```{r}
+plot(dataClus,cex=0.5)
+rect.hclust(dataClus, k = 2,border = c('orange','blue','red','green'))
+```
+
+33. Plotting suggests two clusters, so I'll compare numerically with 2:
+```{r}
+datasil2=silhouette(cutree(dataClus, k = 2), dataSimi)
+clust2solution=data.frame(matrix(datasil2,ncol = 3,dimnames = dimnames(datasil2)))
+row.names(clust2solution)=data.sub2$ProjectID
+(bad2=clust2solution[clust2solution$sil_width<0,])
+```
+
+34. That didn't find any rows, so maybe I need to increase the number of clusters:
+```{r}
+datasil10=silhouette(cutree(dataClus, k = 10), dataSimi)
+clust10solution=data.frame(matrix(datasil10,ncol = 3,dimnames = dimnames(datasil10)))
+row.names(clust10solution)=data.sub2$ProjectID
+(bad10=clust10solution[clust10solution$sil_width<0,])
+```
+
+35. That produced something. I'll also try 9 clusters:
+```{r}
+datasil9=silhouette(cutree(dataClus, k = 9), dataSimi)
+clust9solution=data.frame(matrix(datasil9,ncol = 3,dimnames = dimnames(datasil9)))
+row.names(clust9solution)=data.sub2$ProjectID
+(bad9=clust9solution[clust9solution$sil_width<0,])
+```
+
+36. Identify what units of analysis are difficult to cluster.
+```{r}
+intersect(row.names(bad9),row.names(bad10))
+```
+
+All 36 rows from the cluster10 are difficult to cluster, so I think this indicates that the data is difficult to cluster. I will continue to use the data frame data.sub for mapping the data.
+
+PART THREE: MAPPING
+
+37. I downloaded a shapefile from: https://data.seattle.gov/dataset/Council-Districts/wud8-na47. This dataset contains map information for Seattle's Council Districts. I uploaded the zip file to GitHub.
 
 Unzipping and reading the zip file with required packages installed first:
 ```{r}
@@ -179,28 +286,28 @@ download.file(compressedMap, temp)
 unzip(temp)
 ```
 
-23. Looking to see what shapefiles there are:
+38. Looking to see what shapefiles there are:
 ```{r}
 (maps=list.files(pattern = 'shp'))
 ```
 
-24. I see the name of the shapefile. I will name my map "CDMap" for "Council District Map". With needed packages loaded, selecting the maps that I need for "CDMap":
+39. I see the name of the shapefile. I will name my map "CDMap" for "Council District Map". With needed packages loaded, selecting the maps that I need for "CDMap":
 ```{r}
 library(rgdal)
 CDMap <- rgdal::readOGR('Council_Districts.shp',stringsAsFactors=F)
 ```
 
-25. Looking at what I have in the map:
+40. Looking at what I have in the map:
 ```{r}
 names(CDMap)
 ```
 
-26. Checking data type of "C_District":
+41. Checking data type of "C_District":
 ```{r}
 str(CDMap$C_DISTRICT)
 ```
 
-27. In the map file, Council District is read as a character. This matches "Council.District.TRUE" that I created in the data.sub data frame. Good!
+42. In the map file, Council District is read as a character. This matches "Council.District.TRUE" that I created in the data.sub data frame. Good!
 
 Now, I need to create a new data frame that aggregates the count of project proposals by Council_District_TRUE. 
 
@@ -211,7 +318,7 @@ data.sub["count"] <- 1
 is.numeric(data.sub$count)
 ```
 
-28. I now have a column with "1" for each row so I can aggregate by Council_District_TRUE. I will name the new data frame "data_by_CD".
+43. I now have a column with "1" for each row so I can aggregate by Council_District_TRUE. I will name the new data frame "data_by_CD".
 ```{r}
 numericColumns=c("count")
 aggregateBY='Council.District.TRUE'
@@ -221,18 +328,18 @@ names(data_by_CD)=c('Council.District.TRUE', 'count')
 data_by_CD
 ```
 
-29. Now I will merge the map file with data_by_CD and name the new map "CD_projects_map".
+44. Now I will merge the map file with data_by_CD and name the new map "CD_projects_map".
 ```{r}
 CD_projects_map=merge(CDMap,data_by_CD, by.x='C_DISTRICT', by.y='Council.District.TRUE',all.x=F)
 ```
 
-30. Trying mapping both:
+45. Trying mapping both:
 ```{r}
 plot(CDMap,col='black')
 plot(CD_projects_map,col='pink',border='grey',add=T)
 ```
 
-31. I get a map, so it is working. Now I want to map the variable "count".
+46. I get a map, so it is working. Now I want to map the variable "count".
 
 Install and load the necessary packages to manage color and divisions:
 ```{r}
@@ -240,12 +347,12 @@ library(RColorBrewer)
 library(classInt)
 ```
 
-32. Define the input:
+47. Define the input:
 ```{r}
 varToPLot=CD_projects_map$count
 ```
 
-33. Get colors and intervals:
+48. Get colors and intervals:
 ```{r}
 numberOfClasses = 5
 colorForScale='YlGnBu'
@@ -256,7 +363,7 @@ intervals <- classIntervals(varToPLot, numberOfClasses,
 colorPallette <- findColours(intervals, colors)
 ```
 
-34. Map:
+49. Map:
 ```{r}
 legendText="project proposal rate"
 shrinkLegend=0.4
@@ -270,5 +377,7 @@ legend('topright', legend = names(attr(colorPallette, "table")),
        bty = "n",
        title=legendText)
 ```
+
+The map shows us that the southern Seattle Council Districts had greater number of proposals, with the Council Districts in the middle of the City having the fewest. Proposals were concentrated in the sourthern and northern Council Districts. This is interesting to note. It may mean that there is more need in those Council Districts for these types of projects, or that the residents on more civically engaged and therefore more likely to put in proposals, or outreach efforts might have been concentrated in those locations.
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
