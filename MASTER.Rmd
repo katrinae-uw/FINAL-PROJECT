@@ -1,5 +1,6 @@
 ---
-title: "MASTER"
+title: "Exploration of the Your Voice Your Choice Program"
+author: "Katrina Ernst, Evans School MPA Student"
 output: html_document
 ---
 
@@ -7,7 +8,11 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-INTRODUCTION: some text will go here
+INTRODUCTION: I chose to explore the data for the City of Seattle's 2017 participatory budgeting program, called "Your Voice, Your Choice". This was not data that I was familiar with before this project. The participatory budgeting program began by soliciting project proposals for neighborhood improvements. The program received almost 900 proposals. Those proposals were evaluated by teams, so that each City Council District voted on its top ten proposals. Voting commenced and the projects receiving the highest votes up to the maximum allowed $285,000 budget per Council District were funded. The program data was made available on the City's Open Data platform: data.seattle.gov.
+
+I thought this program would be interesting to explore because participatory budgeting is meant to be a way to encourage civic engagement. The program was structured to equally distribute funding, so exploring whether the variable Council District correlated to the variable Project Status, which would tell us if it was funded or not, is not interesting. However, I thought there would still be some interesting things to discover through exploratory data and text analysis (part 1). I chose to do some text analysis because the data provided includes several fields with long, unique character strings, rather than levels.
+
+I also attempt a cluster analysis (part 2) and to map the data by Council Districts (part 3).
 
 PART ONE: EXPLORATORY DATA AND TEXT ANALYSIS
 
@@ -379,5 +384,3 @@ legend('topright', legend = names(attr(colorPallette, "table")),
 ```
 
 The map shows us that the southern Seattle Council Districts had greater number of proposals, with the Council Districts in the middle of the City having the fewest. Proposals were concentrated in the sourthern and northern Council Districts. This is interesting to note. It may mean that there is more need in those Council Districts for these types of projects, or that the residents on more civically engaged and therefore more likely to put in proposals, or outreach efforts might have been concentrated in those locations.
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
