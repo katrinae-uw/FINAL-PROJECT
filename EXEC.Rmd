@@ -1,0 +1,115 @@
+---
+title: "Exploratory Data Analysis of the City of Seattle's Participatory Budgeting Program"
+output: pdf_document
+---
+
+**Katrina Ernst, MPA Candidate, Evans School of Public Policy & Governance**  
+**Prepared for the course: Computational Thinking for Government Analytics**  
+**March 2018**
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Introduction
+I chose to explore the data for the City of Seattle's 2017 participatory budgeting program, called "Your Voice, Your Choice". This was not data that I was familiar with before this project. The code that I used to explore the data is available in the R markdown [MASTER](https://github.com/katrinae-uw/FINAL-PROJECT/blob/master/MASTER.Rmd). 
+
+## About Participatory Budgeting
+Participatory budgeting is used around the world to engage residents in civic decision-making. Seattle first started its participatory budgeting program with a youth-focused initiative in 2015. The program was expanded to include an initiative open to all Seattle residents in 2017. 
+
+The 2017 participatory budgeting program - [Your Voice, Your Choice](http://www.seattle.gov/neighborhoods/programs-and-services/your-voice-your-choice/history#2017projects) - began by soliciting project proposals for neighborhood improvements. The program received almost 900 proposals. Those proposals were evaluated by teams, so that each City Council District, of which there are seven, voted on its top ten proposals. Voting commenced and the projects receiving the highest votes up to the maximum allowed $285,000 budget per Council District were funded. The program data was made available on the City's Open Data platform: data.seattle.gov.
+
+# Why Look at the Data?
+I thought this program would be interesting to explore because participatory budgeting is meant to be a way to encourage civic engagement. The program was structured to equally distribute funding, so exploring whether the variable Council District correlated to the variable Project Status, which would tell us if it was funded or not, is not interesting. However, I thought there would still be some interesting things to discover through exploratory data and text analysis. I chose to do some text analysis because the data provided includes several fields with long, unique character strings, rather than levels. I also attempted a cluster analysis and mapped the data by Council Districts.
+
+# Findings
+
+## Project Type by Council District
+I thought that one of the interesting things this data might reveal is something about specific neighborhood improvement needs. There is a variable in the data named "Project Type", so I looked at Project Type by Council District and ran a Pearson's chi-squared test to see if the differences between the means was significant. p =  0.01166714 so the null hypothesis is not rejected and it appears that Project Type is not associated with Council District. However, that "Chi-squared approximation may be incorrect" was noted in the output.
+
+```{r, echo=FALSE,  message=FALSE, warning=FALSE}
+dataLink='https://raw.githubusercontent.com/katrinae-uw/FINAL-PROJECT/master/Your_Voice_Your_Choice_Master_List_of_All_Projects_With_Scores.csv'
+
+data=read.csv(dataLink,stringsAsFactors = F)
+
+data$Average.Numeric=as.numeric(as.character(data$Average.Score))
+
+data.sub=data[is.na(data$Average.Numeric) == FALSE,]
+
+data.sub$Council.District.TRUE=as.character(data.sub$Council.District.)
+```
+
+
+## Project Status by Average Score
+I thought it would also be interesting to explore if Average Score made a difference for whether or not a project was funded. Since a committee of residents scored each project, but every resident was invited to vote, did voters perceive a difference in the higher versus lower scored top ten projects and vote to be funded the highest among the top ten? I looked at a box plot to see if there was a notable difference.
+
+```{r, echo=FALSE,  message=FALSE, warning=FALSE}
+library("ggpubr")
+library("ggplot2")
+ggboxplot(data.sub, x = "Project.Status", y = "Average.Numeric", 
+          color = "Project.Status", palette = c("#00AFBB", "#E7B800", "#FC4E07", "#00AFBB", "#E7B800", "#FC4E07"),
+          order = c("Funded for 2018 Implementation", "On Ballot, Not Funded", "Did Not Advance", "Not Feasible", "Already Funded", "Referred to Maintenance"),
+          title = 'Distribution of Average Scores by Project Status',
+          ylab = "Average.Numeric", xlab = "Project.Status") + 
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size=8),
+        axis.text.y = element_text(size = 8),
+        legend.position="none")
+```
+
+
+The box plot reveals some interesting things. Namely, there was a project that scored low enough to be an outlier, but was still funded for implementation. It would be interesting to know what about that project appealed to voters.
+
+## Mapping Number of Project Proposals by Council District
+I also mapped the quantity of project proposals received by Council District. The map may tell us a couple of different things. It may be telling us that outreach to certain council districts was higher than others and thus resulted in more proposals. Or, it could be that the northern and southern districts are more populous. Or, it could be telling us that there really is more need in those Council Districts. Further research is needed to determine which of these is true. If the latter is true than this has implications for policy and decision-making at the City.
+```{r, echo=FALSE,  message=FALSE, warning=FALSE, include=FALSE}
+compressedMap="https://github.com/katrinae-uw/FINAL-PROJECT/raw/master/Council_Districts.zip"
+
+library(utils)
+temp=tempfile()
+download.file(compressedMap, temp)
+unzip(temp)
+
+library(rgdal)
+CDMap <- rgdal::readOGR('Council_Districts.shp',stringsAsFactors=F)
+
+data.sub["count"] <- 1
+
+numericColumns=c("count")
+aggregateBY='Council.District.TRUE'
+
+data_by_CD=aggregate(data.sub[,numericColumns], by=list(data.sub[,aggregateBY]),sum)
+names(data_by_CD)=c('Council.District.TRUE', 'count')
+data_by_CD
+
+CD_projects_map=merge(CDMap,data_by_CD, by.x='C_DISTRICT', by.y='Council.District.TRUE',all.x=F)
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(RColorBrewer)
+library(classInt)
+
+varToPLot=CD_projects_map$count
+
+numberOfClasses = 5
+colorForScale='YlGnBu'
+colors = brewer.pal(numberOfClasses, colorForScale)
+intervals <- classIntervals(varToPLot, numberOfClasses, 
+                            style = "quantile",
+                            dataPrecision=2)
+colorPallette <- findColours(intervals, colors)
+
+legendText="project proposal rate"
+shrinkLegend=0.4
+title="Project Proposal Rate by Council District"
+
+plot(CDMap,col='red',main=title)
+plot(CD_projects_map, col = colorPallette,border='grey',add=T)
+
+legend('topright', legend = names(attr(colorPallette, "table")), 
+       fill = attr(colorPallette, "palette"), cex = shrinkLegend, 
+       bty = "n",
+       title=legendText)
+```
+
+# Questions for Future Research
+It would be interesting to do further text analysis with this data. I was able to generate the top ten words used in the "Who Benefits?" field. Since project proposers fill in this field, there is variability. I wonder if there is any correlation between the terms used in this field and the score that the committee gives the project, or if it correlates to the final projects funded for implementation. This data seems rich for exploring perceived needs and benefits for City projects.
