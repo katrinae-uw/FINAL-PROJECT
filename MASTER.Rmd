@@ -166,9 +166,7 @@ d <- data.frame(word = names(v),freq=v)
 head(d, 10)
 ```
 
-21. Now I am seeing the 10 most common words in the "Who Benefits" column. Though it could be that one project proposal uses the word pedestrians 227 times. I want to know something more like, what words appear in the field "Who Benefits" for the most counts of project proposals. NOT SURE HOW TO DO THAT.
-
-I wonder if there is any association between score and words used to describe who benefits? This is a question for future analysis.
+21. Now I am seeing the 10 most common words in the "Who Benefits" column. Though it could be that one project proposal uses the word pedestrians 227 times. I want to know something more like, what words appear in the field "Who Benefits" for the most counts of project proposals. I also wonder if there is any association between score and words used to describe who benefits? These are questions for future analysis.
 
 PART TWO: CLUSTERING
 
